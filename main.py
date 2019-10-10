@@ -6,6 +6,7 @@ import sys
 import zipfile
 import pathlib
 import os
+import glob
 
 
 def blur_face(data):
@@ -45,9 +46,30 @@ def blur_face(data):
 
 
 
-def blur_faces_from_zip(ipath_zip, opath_dir):
+
+def iter_data_source(ipath):
+	""" Iterate directory or zip file
+	yield -- tuple (path,data) data is file contents (bytes) or None if path is a directory
+	"""
+	if ipath.lower().endswith('.zip'):
+		with zipfile.ZipFile(ipath, "r") as f:
+			for name in f.namelist():
+				if not name.endswith("/"):
+					data=f.read(name)
+					yield name,data
+				else:
+					yield name,None
+	else:
+		for path in glob.iglob(str(pathlib.PurePath(ipath)/"**"), recursive=True):
+			if os.path.isdir(path):
+				yield path,None
+			else:
+				yield path,open(path,"rb").read()
+
+
+def blur_faces(ipath, opath_dir):
 	""" Iterate images found in zip file, blur faces and write to output dir.
-	ipath_zip -- zip containing input images
+	ipath -- zipfile or directory
 	opath_dir -- where to write output images
 	effect -- output images are written to opath_dir directory
 	"""
@@ -55,27 +77,27 @@ def blur_faces_from_zip(ipath_zip, opath_dir):
 		print("I creating output directory")
 		os.makedirs(opath_dir)
 
-	with zipfile.ZipFile(ipath_zip, "r") as f:
-		for name in f.namelist():
-			path=pathlib.Path(name)
-			if not name.endswith("/"):
-				data=f.read(name)
-				im=blur_face(data)
-				opath=opath_dir/path
-				print("I {}".format(opath))
-				cv2.imwrite(str(opath),im)
-			else:
-				if not os.path.exists(opath_dir/path):
-					os.makedirs(opath_dir/path)
+	for name,data in iter_data_source(ipath):
+		path=pathlib.Path(name)
+		if data is None:
+			# dir
+			if not os.path.exists(opath_dir/path):
+				os.makedirs(opath_dir/path)
+		else:
+			im=blur_face(data)
+			opath=opath_dir/path
+			print("I {}".format(opath))
+			cv2.imwrite(str(opath),im)
+
 
 
 def main():
 	if len(sys.argv)!=2:
-		print("Usage: python3 main.py <faces.zip>")
+		print("Usage: python3 main.py <input-dir-or-zip-file-path>")
 		sys.exit(0)
 
-	ipath_zip=sys.argv[1]
-	blur_faces_from_zip(ipath_zip, "output")
+	ipath=sys.argv[1]
+	blur_faces(ipath, "output")
 
 
 if __name__=="__main__":
