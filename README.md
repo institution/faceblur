@@ -1,4 +1,4 @@
-Tool to blur faces from zip files. Contains example dataset.
+Tool to blur faces. Contains example dataset.
 
 Example: `python3 main.py faces.zip`
 
