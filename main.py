@@ -1,6 +1,5 @@
 # import libraries
 import cv2
-import matplotlib.pyplot as plt
 import cvlib as cv
 import numpy
 import sys
